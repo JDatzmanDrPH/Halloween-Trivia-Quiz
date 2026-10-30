@@ -273,6 +273,91 @@
     .feedback.reveal { animation: none; }
     .fx { display: none; }
   }
+
+  /* Three-question progress */
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.4fr);
+    gap: 8px;
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+  }
+  .steps button {
+    position: relative;
+    width: 100%;
+    min-height: 46px;
+    font: 700 1.05rem/1 var(--sans);
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .steps button:disabled { color: var(--muted); opacity: 0.5; cursor: default; }
+  .steps button::after {
+    content: "";
+    position: absolute;
+    left: 30%;
+    right: 30%;
+    bottom: 5px;
+    height: 4px;
+    border-radius: 2px;
+    background: transparent;
+  }
+  .steps button.is-right { background: var(--good-tint); border-color: var(--good); }
+  .steps button.is-right::after { background: var(--good); }
+  .steps button.is-wrong { background: var(--bad-tint); border-color: var(--bad); }
+  .steps button.is-wrong::after {
+    background: repeating-linear-gradient(90deg, var(--bad) 0 4px, transparent 4px 7px);
+  }
+  .steps button[aria-current="step"] {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  .prompt:focus { outline: none; }
+
+  .btn-primary {
+    min-height: 48px;
+    margin-top: 1.25rem;
+    padding: 0.8rem 1.25rem;
+    font: 700 1.05rem/1 var(--sans);
+    color: var(--on-accent);
+    background: var(--pumpkin);
+    border: 1px solid var(--pumpkin);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .summary.reveal { animation: rise 0.4s ease-out; }
+  .score-num {
+    margin: 0;
+    font-family: var(--title);
+    font-weight: 400;
+    font-size: clamp(3.4rem, 18vw, 4.8rem);
+    line-height: 1;
+    color: var(--pumpkin);
+  }
+  .score-msg {
+    margin: 0.6rem 0 0;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.5rem;
+    line-height: 1.3;
+  }
+  .score-msg:focus { outline: none; }
+  .score-note {
+    margin: 1rem 0 0;
+    color: var(--muted);
+    font-size: 1.02rem;
+    line-height: 1.5;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .summary.reveal { animation: none; }
+  }
 </style>
 </head>
 <body>
@@ -280,16 +365,28 @@
   <main>
     <h1>Med Stats &amp; Epi Trivia</h1>
     <p class="edition">Halloween edition</p>
-    <p class="intro" id="intro">Trick or treat? Here’s your question from the history of medical statistics. Tap an answer to see how you did.</p>
+    <p class="intro" id="intro">Trick or treat? Here are three questions from the history of medical statistics. Tap an answer to see how you did.</p>
 
-    <article class="card">
-      <h2 class="prompt" id="prompt"></h2>
+    <nav aria-label="Your questions">
+      <ol class="steps" id="steps"></ol>
+    </nav>
+
+    <article class="card" id="qcard">
+      <h2 class="prompt" id="prompt-heading" tabindex="-1"><span class="sr" id="sr-count"></span><span id="prompt"></span></h2>
       <div class="options" id="options" role="group" aria-label="Answer choices"></div>
       <div class="feedback" id="feedback" aria-live="polite" hidden>
         <p class="verdict" id="verdict" tabindex="-1"></p>
         <p class="explain" id="explain"></p>
-        <p class="thanks">Thanks for playing, and happy Halloween!</p>
+        <button class="btn-primary" id="next" type="button">Next question</button>
       </div>
+    </article>
+
+    <article class="card summary" id="summary" hidden>
+      <h2 class="sr">Your score</h2>
+      <p class="score-num" id="score-num"></p>
+      <p class="score-msg" id="score-msg" tabindex="-1"></p>
+      <p class="score-note">Tap 1, 2, or 3 above to look back at your answers.</p>
+      <p class="thanks">Thanks for playing, and happy Halloween!</p>
     </article>
   </main>
   <div class="fx" id="fx" aria-hidden="true"></div>
@@ -432,50 +529,92 @@
   ];
 
   var N = QUESTIONS.length;
-  var KEY = "medstats-trivia-assigned-v1";
+  var PICK = 3;
+  var KEY = "medstats-trivia-halloween-3q-v1";
   var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   function $(id) { return document.getElementById(id); }
-  var introEl = $("intro"), promptEl = $("prompt"), optsEl = $("options"),
-      fbEl = $("feedback"), verdictEl = $("verdict"), explainEl = $("explain");
+  var introEl = $("intro"), stepsEl = $("steps"), qCard = $("qcard"), sumCard = $("summary"),
+      headingEl = $("prompt-heading"), srCountEl = $("sr-count"), promptEl = $("prompt"),
+      optsEl = $("options"), fbEl = $("feedback"), verdictEl = $("verdict"), explainEl = $("explain"),
+      nextBtn = $("next"), scoreNumEl = $("score-num"), scoreMsgEl = $("score-msg");
+
+  function randInt(max) {
+    try {
+      var buf = new Uint32Array(1);
+      window.crypto.getRandomValues(buf);
+      return buf[0] % max;
+    } catch (e) {
+      return Math.floor(Math.random() * max);
+    }
+  }
+
+  function pickSet() {
+    var pool = [];
+    for (var i = 0; i < N; i++) pool.push(i);
+    for (var j = pool.length - 1; j > 0; j--) {
+      var k = randInt(j + 1);
+      var tmp = pool[j]; pool[j] = pool[k]; pool[k] = tmp;
+    }
+    return pool.slice(0, PICK);
+  }
 
   function load() {
     try {
       var raw = localStorage.getItem(KEY);
       if (!raw) return null;
       var d = JSON.parse(raw);
-      if (d && typeof d.index === "number" && d.index >= 0 && d.index < N) {
-        return { index: d.index, choice: typeof d.choice === "string" ? d.choice : null };
+      var ok = d && Array.isArray(d.indices) && Array.isArray(d.choices) &&
+               d.indices.length === PICK && d.choices.length === PICK &&
+               d.indices.every(function (n) { return typeof n === "number" && n >= 0 && n < N && Math.floor(n) === n; }) &&
+               new Set(d.indices).size === PICK;
+      if (ok) {
+        return {
+          indices: d.indices,
+          choices: d.choices.map(function (c) { return typeof c === "string" ? c : null; })
+        };
       }
     } catch (e) { /* storage unavailable or unreadable */ }
     return null;
   }
 
-  function save(d) {
-    try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { /* storage unavailable */ }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(record)); } catch (e) { /* storage unavailable */ }
   }
 
-  function pickIndex() {
-    try {
-      var buf = new Uint32Array(1);
-      window.crypto.getRandomValues(buf);
-      return buf[0] % N;
-    } catch (e) {
-      return Math.floor(Math.random() * N);
-    }
+  var record = load();
+  if (!record) {
+    record = { indices: pickSet(), choices: [null, null, null] };
+    save();
   }
 
-  function celebrate(right) {
+  function firstOpen() {
+    for (var i = 0; i < PICK; i++) if (record.choices[i] === null) return i;
+    return "summary";
+  }
+  function allDone() { return firstOpen() === "summary"; }
+  function isRight(step) {
+    return record.choices[step] === QUESTIONS[record.indices[step]].correct;
+  }
+  function scoreCount() {
+    var c = 0;
+    for (var i = 0; i < PICK; i++) if (record.choices[i] !== null && isRight(i)) c++;
+    return c;
+  }
+
+  var view = firstOpen();
+
+  function celebrate(kind) {
     var fxEl = document.getElementById("fx");
     if (reduceMotion || !fxEl) return;
-    var count = right ? 3 : 1;
+    var count = kind === "ghost" ? 1 : (kind === "flock" ? 6 : 3);
     for (var i = 0; i < count; i++) {
       var el = document.createElement("span");
-      el.textContent = right ? "🦇" : "👻";
-      el.className = right ? "bat" : "ghost";
-      if (right) {
-        el.style.top = (16 + i * 13) + "vh";
-        el.style.animationDelay = (i * 0.18) + "s";
+      el.textContent = kind === "ghost" ? "👻" : "🦇";
+      el.className = kind === "ghost" ? "ghost" : "bat";
+      if (kind !== "ghost") {
+        el.style.top = (12 + (i % 3) * 13 + (i > 2 ? 6 : 0)) + "vh";
+        el.style.animationDelay = (i * 0.16) + "s";
       }
       el.addEventListener("animationend", function (e) {
         if (e.target.parentNode) e.target.parentNode.removeChild(e.target);
@@ -484,30 +623,50 @@
     }
   }
 
-  var record = load();
-  if (!record) {
-    record = { index: pickIndex(), choice: null };
-    save(record);
+  function renderSteps() {
+    while (stepsEl.firstChild) stepsEl.removeChild(stepsEl.firstChild);
+    var open = firstOpen();
+    for (var i = 0; i < PICK; i++) {
+      (function (step) {
+        var li = document.createElement("li");
+        var b = document.createElement("button");
+        b.type = "button";
+        b.textContent = String(step + 1);
+        var answered = record.choices[step] !== null;
+        var status = "";
+        if (answered) {
+          if (isRight(step)) { b.classList.add("is-right"); status = ", answered correctly"; }
+          else { b.classList.add("is-wrong"); status = ", answered incorrectly"; }
+        } else if (step !== open) {
+          b.disabled = true;
+          status = ", not yet unlocked";
+        }
+        if (view === step) b.setAttribute("aria-current", "step");
+        b.setAttribute("aria-label", "Question " + (step + 1) + status);
+        b.addEventListener("click", function () { go(step, false); });
+        li.appendChild(b);
+        stepsEl.appendChild(li);
+      })(i);
+    }
+    var li2 = document.createElement("li");
+    var sb = document.createElement("button");
+    sb.type = "button";
+    sb.textContent = "Score";
+    sb.disabled = !allDone();
+    sb.setAttribute("aria-label", allDone() ? "Your score" : "Your score, available after all three questions");
+    if (view === "summary") sb.setAttribute("aria-current", "step");
+    sb.addEventListener("click", function () { go("summary", false); });
+    li2.appendChild(sb);
+    stepsEl.appendChild(li2);
   }
 
-  function answer(id) {
-    if (record.choice !== null) return;
-    record.choice = id;
-    save(record);
-    render(true);
-    celebrate(record.choice === QUESTIONS[record.index].correct);
-    try { verdictEl.focus({ preventScroll: true }); } catch (e) { /* older browsers */ }
-    fbEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
-  }
+  function renderQuestion(step, fresh) {
+    var q = QUESTIONS[record.indices[step]];
+    var choice = record.choices[step];
+    var done = choice !== null;
 
-  function render(fresh) {
-    var q = QUESTIONS[record.index];
-    var done = record.choice !== null;
-
+    srCountEl.textContent = "Question " + (step + 1) + " of " + PICK + ". ";
     promptEl.textContent = q.prompt;
-    introEl.textContent = done
-      ? "Here’s your Halloween question from the history of medical statistics, with your answer."
-      : "Trick or treat? Here’s your question from the history of medical statistics. Tap an answer to see how you did.";
 
     while (optsEl.firstChild) optsEl.removeChild(optsEl.firstChild);
     q.options.forEach(function (o) {
@@ -534,7 +693,7 @@
         if (o.id === q.correct) {
           b.classList.add("is-correct");
           note.textContent = " (correct answer)";
-        } else if (o.id === record.choice) {
+        } else if (o.id === choice) {
           b.classList.add("is-wrong");
           note.textContent = " (your answer)";
         } else {
@@ -542,16 +701,17 @@
         }
         b.appendChild(note);
       } else {
-        b.addEventListener("click", function () { answer(o.id); });
+        b.addEventListener("click", function () { answer(step, o.id); });
       }
       optsEl.appendChild(b);
     });
 
     if (done) {
-      var right = record.choice === q.correct;
+      var right = choice === q.correct;
       verdictEl.className = "verdict " + (right ? "is-right" : "is-wrong");
       verdictEl.textContent = right ? q.right : q.wrong;
       explainEl.textContent = q.explanation;
+      nextBtn.textContent = allDone() ? "See your score" : "Next question";
       fbEl.hidden = false;
       fbEl.classList.remove("reveal");
       if (fresh && !reduceMotion) {
@@ -562,6 +722,71 @@
       fbEl.hidden = true;
     }
   }
+
+  function renderSummary(fresh) {
+    var c = scoreCount();
+    scoreNumEl.textContent = c + " of " + PICK;
+    var msgs = [
+      "The data were haunted this time.",
+      "Not bad for a ghoul.",
+      "Spooky good!",
+      "A perfect score. All treats, no tricks!"
+    ];
+    scoreMsgEl.textContent = msgs[c];
+    sumCard.classList.remove("reveal");
+    if (fresh && !reduceMotion) {
+      void sumCard.offsetWidth;
+      sumCard.classList.add("reveal");
+    }
+  }
+
+  function render(fresh) {
+    introEl.textContent = allDone()
+      ? "Here are your three Halloween questions from the history of medical statistics, with your answers."
+      : "Trick or treat? Here are three questions from the history of medical statistics. Tap an answer to see how you did.";
+    renderSteps();
+    if (view === "summary") {
+      qCard.hidden = true;
+      sumCard.hidden = false;
+      renderSummary(fresh);
+    } else {
+      sumCard.hidden = true;
+      qCard.hidden = false;
+      renderQuestion(view, fresh);
+    }
+  }
+
+  function scrollTop() {
+    if (window.scrollY > 0) {
+      window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    }
+  }
+
+  function go(target, fresh) {
+    view = target;
+    render(fresh);
+    scrollTop();
+    try {
+      if (target === "summary") scoreMsgEl.focus({ preventScroll: true });
+      else headingEl.focus({ preventScroll: true });
+    } catch (e) { /* older browsers */ }
+    if (target === "summary" && fresh && scoreCount() === PICK) celebrate("flock");
+  }
+
+  function answer(step, id) {
+    if (record.choices[step] !== null) return;
+    record.choices[step] = id;
+    save();
+    render(true);
+    celebrate(isRight(step) ? "bats" : "ghost");
+    try { verdictEl.focus({ preventScroll: true }); } catch (e) { /* older browsers */ }
+    fbEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+  }
+
+  nextBtn.addEventListener("click", function () {
+    if (allDone()) go("summary", true);
+    else go(firstOpen(), false);
+  });
 
   render(false);
 })();
