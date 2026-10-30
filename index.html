@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Med Stats &amp; Epi Trivia: Your Question</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Libre+Caslon+Display&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #EEF2F5;
+    --surface: #FFFFFF;
+    --ink: #1B2532;
+    --muted: #566273;
+    --rule: #C8D2DB;
+    --grid: rgba(47, 110, 159, 0.08);
+    --blue: #2F6E9F;
+    --blue-tint: #DCE8F2;
+    --rose: #B03F57;
+    --rose-tint: #F5DEE3;
+    --on-accent: #FFFFFF;
+    --serif: "Libre Caslon Text", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --display: "Libre Caslon Display", "Libre Caslon Text", "Iowan Old Style", Georgia, serif;
+    --sans: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color-scheme: light;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #121820;
+      --surface: #1A222C;
+      --ink: #E4EAF0;
+      --muted: #9BA8B6;
+      --rule: #2C3846;
+      --grid: rgba(132, 181, 222, 0.06);
+      --blue: #84B5DE;
+      --blue-tint: #1C3247;
+      --rose: #E8899B;
+      --rose-tint: #3B2129;
+      --on-accent: #10161D;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #121820;
+    --surface: #1A222C;
+    --ink: #E4EAF0;
+    --muted: #9BA8B6;
+    --rule: #2C3846;
+    --grid: rgba(132, 181, 222, 0.06);
+    --blue: #84B5DE;
+    --blue-tint: #1C3247;
+    --rose: #E8899B;
+    --rose-tint: #3B2129;
+    --on-accent: #10161D;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: inherit; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+  [hidden] { display: none !important; }
+
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: var(--sans);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  :focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+
+  .sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1.5rem 1.1rem 3rem;
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 1.6rem;
+    line-height: 1.1;
+  }
+  .intro {
+    margin: 0.4rem 0 1.25rem;
+    color: var(--muted);
+    font-size: 1.02rem;
+    line-height: 1.45;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 1.35rem 1.15rem 1.5rem;
+  }
+  @media (min-width: 560px) {
+    .card { padding: 2rem; }
+  }
+
+  .prompt {
+    margin: 0 0 1.25rem;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(1.25rem, 5vw, 1.6rem);
+    line-height: 1.4;
+    text-wrap: pretty;
+  }
+
+  .options { display: grid; gap: 0.6rem; }
+  .opt {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    width: 100%;
+    min-height: 52px;
+    text-align: left;
+    font: 400 1.08rem/1.45 var(--sans);
+    color: var(--ink);
+    background: transparent;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 0.8rem 0.95rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--ink); background: var(--paper); }
+  .opt:active:not(:disabled) { background: var(--paper); }
+  .opt:disabled { cursor: default; }
+  .opt-letter {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    border: 1px solid var(--rule);
+    font-weight: 700;
+    font-size: 0.95rem;
+  }
+  .opt-text { padding-top: 0.15rem; }
+  .opt.is-correct { background: var(--blue-tint); border-color: var(--blue); }
+  .opt.is-correct .opt-letter { background: var(--blue); border-color: var(--blue); color: var(--on-accent); }
+  .opt.is-wrong { background: var(--rose-tint); border-color: var(--rose); }
+  .opt.is-wrong .opt-letter { background: var(--rose); border-color: var(--rose); color: var(--on-accent); }
+  .opt.is-dim { color: var(--muted); }
+
+  .feedback {
+    margin-top: 1.4rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--rule);
+  }
+  .feedback.reveal { animation: rise 0.35s ease-out; }
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .feedback.reveal { animation: none; }
+  }
+  .verdict {
+    margin: 0 0 0.5rem;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 1.35rem;
+    line-height: 1.3;
+  }
+  .verdict:focus { outline: none; }
+  .verdict.is-right { color: var(--blue); }
+  .verdict.is-wrong { color: var(--rose); }
+  .explain {
+    margin: 0;
+    font-size: 1.06rem;
+    line-height: 1.62;
+  }
+  .thanks {
+    margin: 1.25rem 0 0;
+    color: var(--muted);
+    font-size: 1rem;
+  }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Med Stats &amp; Epi Trivia</h1>
+    <p class="intro" id="intro">Here’s your question from the history of medical statistics. Tap an answer to see how you did.</p>
+
+    <article class="card">
+      <h2 class="prompt" id="prompt"></h2>
+      <div class="options" id="options" role="group" aria-label="Answer choices"></div>
+      <div class="feedback" id="feedback" aria-live="polite" hidden>
+        <p class="verdict" id="verdict" tabindex="-1"></p>
+        <p class="explain" id="explain"></p>
+        <p class="thanks">Thanks for playing!</p>
+      </div>
+    </article>
+  </main>
+
+<script>
+(function () {
+  "use strict";
+
+  var QUESTIONS = [
+    {
+      prompt: "ROC curves are now the standard way to judge how well a diagnostic test separates sick from healthy patients. Where does the name “receiver operating characteristic” come from?",
+      options: [
+        { id: "a", text: "Early cardiac monitors in coronary care units" },
+        { id: "b", text: "Radar operators detecting enemy aircraft in World War II" },
+        { id: "c", text: "Telegraph receivers on transatlantic cables" },
+        { id: "d", text: "Hearing tests developed for military recruits" }
+      ],
+      correct: "b",
+      right: "Right on the radar!",
+      wrong: "That one flew under the radar.",
+      explanation: "Signal detection theory was developed to describe how well radar receiver operators distinguished real aircraft from noise, trading off hits against false alarms. The same logic later spread to psychology and then radiology. Today, every AUC you read in a diagnostic accuracy paper is answering the radar operator’s question: how often does the signal beat the noise?"
+    },
+    {
+      prompt: "Kaplan and Meier’s 1958 survival analysis paper is one of the most cited statistics papers ever written. How did the two end up as co-authors?",
+      options: [
+        { id: "a", text: "They were college roommates who started the project as a bet" },
+        { id: "b", text: "Each submitted a separate, similar manuscript, and the journal editor persuaded them to merge" },
+        { id: "c", text: "Meier was Kaplan’s doctoral advisor" },
+        { id: "d", text: "They were both statisticians on the Framingham Heart Study" }
+      ],
+      correct: "b",
+      right: "You survived that one!",
+      wrong: "Censored, try again.",
+      explanation: "Kaplan and Meier independently submitted papers on estimating survival with incomplete follow-up. The editor, John Tukey, suggested they combine them, which reportedly took years of correspondence to reconcile. Their product-limit estimator solved the problem of censoring, patients who leave a study or haven’t had the event yet, and it’s behind nearly every survival curve in oncology and cardiology trials."
+    },
+    {
+      prompt: "The 1948 streptomycin trial for tuberculosis is often called the first true randomized controlled trial. How did investigators justify randomly withholding the new drug from the control group?",
+      options: [
+        { id: "a", text: "Streptomycin was considered too toxic to give to everyone" },
+        { id: "b", text: "There wasn’t enough streptomycin to treat all eligible patients, so random allocation was the fairest way to share it" },
+        { id: "c", text: "All patients signed detailed consent forms agreeing they might not receive the drug" },
+        { id: "d", text: "Earlier studies had already suggested streptomycin didn’t work for tuberculosis" }
+      ],
+      correct: "b",
+      right: "Randomly brilliant!",
+      wrong: "Allocation error!",
+      explanation: "The 1948 Medical Research Council trial of streptomycin for pulmonary tuberculosis, designed by Austin Bradford Hill, is widely regarded as the first properly randomized controlled trial, with allocation from random number sequences kept in sealed envelopes. Postwar Britain could afford only a small supply of the drug, so Hill argued a lottery was the fairest way to decide who got it. The twist: control patients weren’t told they were in a trial at all, while the radiologists reading their chest X-rays were blinded to treatment group."
+    },
+    {
+      prompt: "Which landmark study is credited with introducing the term “risk factor” into medical vocabulary?",
+      options: [
+        { id: "a", text: "The British Doctors Study" },
+        { id: "b", text: "The Nurses’ Health Study" },
+        { id: "c", text: "The Seven Countries Study" },
+        { id: "d", text: "The Framingham Heart Study" }
+      ],
+      correct: "d",
+      right: "Low risk, high reward!",
+      wrong: "Risky choice.",
+      explanation: "Framingham enrolled about 5,200 adults in 1948 and followed them prospectively. A 1961 paper by Kannel and colleagues on “factors of risk” for coronary heart disease gave us the phrase, and the study helped establish hypertension, high cholesterol, and smoking as cardiovascular risk factors. It’s now following the grandchildren of the original cohort."
+    },
+    {
+      prompt: "In 1784, Benjamin Franklin and Antoine Lavoisier ran one of history’s earliest blinded experiments for a French royal commission. What were they testing?",
+      options: [
+        { id: "a", text: "Smallpox inoculation" },
+        { id: "b", text: "Bloodletting for fever" },
+        { id: "c", text: "Franz Mesmer’s “animal magnetism”" },
+        { id: "d", text: "Electrical shock as a cure for paralysis" }
+      ],
+      correct: "c",
+      right: "Mesmerizing work!",
+      wrong: "Not quite, keep your eyes open.",
+      explanation: "Blindfolded subjects had dramatic reactions only when they believed they were being “magnetized,” regardless of whether anything was actually done. The commission concluded the effects came from imagination, an early demonstration of the placebo effect and of why blinding matters. Bonus trivia: Joseph-Ignace Guillotin also sat on the commission."
+    },
+    {
+      prompt: "Long before modern statistics, a physician might call an opinion “probable.” In medieval and Renaissance usage, what did that mean?",
+      options: [
+        { id: "a", text: "It was supported by counting how often outcomes occurred" },
+        { id: "b", text: "It was approved by respected authorities, such as Galen or Aristotle" },
+        { id: "c", text: "It was more likely true than false" },
+        { id: "d", text: "It came from analyzing games of chance" }
+      ],
+      correct: "b",
+      right: "Approved by the authorities!",
+      wrong: "Improbable, in the old sense.",
+      explanation: "Philosopher Ian Hacking argued that before the mid-1600s, probabilis meant worthy of approval, an opinion backed by respected authorities like Galen or Aristotle, not by evidence or frequencies. Meanwhile, physicians and other practitioners of the “low sciences” reasoned from signs: a pulse, a urine color, or a symptom that pointed to a disease most of the time but not always. Hacking’s thesis is that this sign-based reasoning helped shift probability from the testimony of authorities to the evidence of things themselves, setting the stage for modern probability around 1660. Every likelihood ratio you calculate is a descendant of reading signs."
+    },
+    {
+      prompt: "In 1760, mathematician Daniel Bernoulli built what’s often called the first mathematical model in epidemiology. What was he arguing for?",
+      options: [
+        { id: "a", text: "Inoculating people against smallpox" },
+        { id: "b", text: "Quarantining ships to prevent plague" },
+        { id: "c", text: "Draining swamps to reduce malaria" },
+        { id: "d", text: "Banning bloodletting in children" }
+      ],
+      correct: "a",
+      right: "Well inoculated!",
+      wrong: "Not quite, try a different shot.",
+      explanation: "Bernoulli modeled smallpox deaths by age and estimated that universal variolation, despite its small risk of killing the patient, would raise life expectancy at birth by about three years. Jean d’Alembert pushed back, asking how anyone should weigh a small immediate risk of death against a long-term gain. That’s essentially the same risk–benefit debate that surrounds vaccines and preventive therapies today."
+    },
+    {
+      prompt: "Daniel Bernoulli wasn’t the only one in his family with a head for numbers. Across three generations, how many members of the Bernoulli family of Basel became notable mathematicians?",
+      options: [
+        { id: "a", text: "Two" },
+        { id: "b", text: "Four" },
+        { id: "c", text: "Eight" },
+        { id: "d", text: "Twelve" }
+      ],
+      correct: "c",
+      right: "Bernoulli-ant!",
+      wrong: "The law of large numbers says keep trying.",
+      explanation: "Eight Bernoullis became notable mathematicians, and three left lasting marks on probability. Jacob’s Ars Conjectandi, published after his death in 1713, proved the first law of large numbers, the reason bigger trials give more stable estimates; any yes/no outcome like survived or died is still called a “Bernoulli trial.” His nephew Nicolaus posed the St. Petersburg paradox, and Daniel resolved it in 1738 with the idea of expected utility, an ancestor of the utility weights used in medical decision analysis. The family was famously competitive: brothers Jacob and Johann feuded for years, and Johann reportedly backdated a book to claim priority over his own son Daniel. Bonus: Jacob asked for a logarithmic spiral on his tombstone, and the stonemason carved the wrong kind of spiral."
+    },
+    {
+      prompt: "Why is it called “regression”? The term comes from Francis Galton’s 1880s observation about what?",
+      options: [
+        { id: "a", text: "Tumors shrinking after radiation treatment" },
+        { id: "b", text: "Children of unusually tall parents tending to be closer to average height" },
+        { id: "c", text: "Patients regressing to childlike behavior in asylums" },
+        { id: "d", text: "Fevers returning after quinine was stopped" }
+      ],
+      correct: "b",
+      right: "You’ve reached your full stature!",
+      wrong: "Regress and try again.",
+      explanation: "Galton found that children of very tall or very short parents tended to be closer to average height, which he called “regression towards mediocrity.” It wasn’t biology pulling toward the mean, just the statistical reality that extreme measurements are partly chance. In clinic, it’s why a patient enrolled for one very high blood pressure reading often looks better at follow-up, treatment or not."
+    },
+    {
+      prompt: "Body mass index appears on nearly every patient chart. Who invented it in the 1830s?",
+      options: [
+        { id: "a", text: "A Victorian life insurance physician pricing policies" },
+        { id: "b", text: "A Prussian army surgeon screening recruits" },
+        { id: "c", text: "A Belgian astronomer and statistician searching for the “average man”" },
+        { id: "d", text: "Ancel Keys, an American physiologist studying heart disease" }
+      ],
+      correct: "c",
+      right: "A weighty answer!",
+      wrong: "That doesn’t measure up.",
+      explanation: "Quetelet, a Belgian astronomer turned social statistician, measured populations to describe the “average man” and noticed that adult weight scaled roughly with height squared. He never meant it as a diagnostic tool for individual patients. In 1972, physiologist Ancel Keys compared weight indices for population studies, found Quetelet’s worked best, and renamed it the “body mass index.” Its use for judging individual health is still debated today."
+    }
+  ];
+
+  var N = QUESTIONS.length;
+  var KEY = "medstats-trivia-assigned-v1";
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function $(id) { return document.getElementById(id); }
+  var introEl = $("intro"), promptEl = $("prompt"), optsEl = $("options"),
+      fbEl = $("feedback"), verdictEl = $("verdict"), explainEl = $("explain");
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (!raw) return null;
+      var d = JSON.parse(raw);
+      if (d && typeof d.index === "number" && d.index >= 0 && d.index < N) {
+        return { index: d.index, choice: typeof d.choice === "string" ? d.choice : null };
+      }
+    } catch (e) { /* storage unavailable or unreadable */ }
+    return null;
+  }
+
+  function save(d) {
+    try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) { /* storage unavailable */ }
+  }
+
+  function pickIndex() {
+    try {
+      var buf = new Uint32Array(1);
+      window.crypto.getRandomValues(buf);
+      return buf[0] % N;
+    } catch (e) {
+      return Math.floor(Math.random() * N);
+    }
+  }
+
+  var record = load();
+  if (!record) {
+    record = { index: pickIndex(), choice: null };
+    save(record);
+  }
+
+  function answer(id) {
+    if (record.choice !== null) return;
+    record.choice = id;
+    save(record);
+    render(true);
+    try { verdictEl.focus({ preventScroll: true }); } catch (e) { /* older browsers */ }
+    fbEl.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "nearest" });
+  }
+
+  function render(fresh) {
+    var q = QUESTIONS[record.index];
+    var done = record.choice !== null;
+
+    promptEl.textContent = q.prompt;
+    introEl.textContent = done
+      ? "Here’s your question from the history of medical statistics, with your answer."
+      : "Here’s your question from the history of medical statistics. Tap an answer to see how you did.";
+
+    while (optsEl.firstChild) optsEl.removeChild(optsEl.firstChild);
+    q.options.forEach(function (o) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "opt";
+      var letter = document.createElement("span");
+      letter.className = "opt-letter";
+      letter.setAttribute("aria-hidden", "true");
+      letter.textContent = o.id.toUpperCase();
+      var label = document.createElement("span");
+      label.className = "sr";
+      label.textContent = o.id.toUpperCase() + ". ";
+      var text = document.createElement("span");
+      text.className = "opt-text";
+      text.textContent = o.text;
+      b.appendChild(letter);
+      b.appendChild(label);
+      b.appendChild(text);
+      if (done) {
+        b.disabled = true;
+        var note = document.createElement("span");
+        note.className = "sr";
+        if (o.id === q.correct) {
+          b.classList.add("is-correct");
+          note.textContent = " (correct answer)";
+        } else if (o.id === record.choice) {
+          b.classList.add("is-wrong");
+          note.textContent = " (your answer)";
+        } else {
+          b.classList.add("is-dim");
+        }
+        b.appendChild(note);
+      } else {
+        b.addEventListener("click", function () { answer(o.id); });
+      }
+      optsEl.appendChild(b);
+    });
+
+    if (done) {
+      var right = record.choice === q.correct;
+      verdictEl.className = "verdict " + (right ? "is-right" : "is-wrong");
+      verdictEl.textContent = right ? q.right : q.wrong;
+      explainEl.textContent = q.explanation;
+      fbEl.hidden = false;
+      fbEl.classList.remove("reveal");
+      if (fresh && !reduceMotion) {
+        void fbEl.offsetWidth;
+        fbEl.classList.add("reveal");
+      }
+    } else {
+      fbEl.hidden = true;
+    }
+  }
+
+  render(false);
+})();
+</script>
+</body>
+</html>
